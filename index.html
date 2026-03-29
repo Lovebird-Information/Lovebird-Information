@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lovebird Ultimate App</title>
+
+  <style>
+    body { margin:0; font-family:Arial; background:#f2f2f2; }
+
+    .header {
+      background:#6200ea; color:white;
+      padding:15px; text-align:center;
+    }
+
+    .screen { display:none; padding:15px; }
+    .active { display:block; }
+
+    input, select, button {
+      width:100%; padding:10px;
+      margin:5px 0; border-radius:8px;
+      border:none;
+    }
+
+    button { background:#03dac6; }
+
+    .card {
+      background:white;
+      padding:10px;
+      margin:10px 0;
+      border-radius:10px;
+      box-shadow:0 0 5px gray;
+    }
+
+    .bottom-nav {
+      position:fixed;
+      bottom:0;
+      width:100%;
+      background:white;
+      display:flex;
+      border-top:1px solid #ccc;
+    }
+
+    .bottom-nav button {
+      flex:1;
+      background:none;
+    }
+  </style>
+
+</head>
+
+<body>
+
+<div class="header">🐦 Lovebird Ultimate</div>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+
+<input id="search" placeholder="Search..." onkeyup="render()">
+
+<select id="filter" onchange="render()">
+  <option value="all">All</option>
+  <option value="Male">Male</option>
+  <option value="Female">Female</option>
+</select>
+
+<div id="list"></div>
+</div>
+
+<!-- ADD -->
+<div id="add" class="screen">
+
+<input id="name" placeholder="Bird Name">
+<select id="gender">
+  <option>Male</option>
+  <option>Female</option>
+</select>
+
+<input id="birth" type="date">
+<input id="father" placeholder="Father">
+<input id="mother" placeholder="Mother">
+
+<input id="eggDate" type="date" placeholder="Egg Date">
+
+<input type="file" id="image">
+
+<button onclick="saveBird()">Save</button>
+
+</div>
+
+<!-- DETAILS -->
+<div id="details" class="screen">
+  <div id="detailBox"></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="screen">
+  <button onclick="clearAll()">Delete All Data</button>
+</div>
+
+<!-- NAV -->
+<div class="bottom-nav">
+  <button onclick="showScreen('home')">Home</button>
+  <button onclick="showScreen('add')">Add</button>
+  <button onclick="showScreen('settings')">Settings</button>
+</div>
+
+<script>
+
+let birds = JSON.parse(localStorage.getItem("birds")) || [];
+
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+window.onload = render;
+
+function saveBird(){
+  let file = image.files[0];
+  let reader = new FileReader();
+
+  reader.onload = function(e){
+    let bird = {
+      id: Date.now(),
+      name: name.value,
+      gender: gender.value,
+      birth: birth.value,
+      father: father.value,
+      mother: mother.value,
+      eggDate: eggDate.value,
+      image: e.target.result
+    };
+
+    birds.push(bird);
+    localStorage.setItem("birds", JSON.stringify(birds));
+    render();
+    showScreen("home");
+  };
+
+  if(file) reader.readAsDataURL(file);
+}
+
+function render(){
+  let search = document.getElementById("search").value.toLowerCase();
+  let filter = document.getElementById("filter").value;
+
+  list.innerHTML = "";
+
+  birds
+    .filter(b =>
+      b.name.toLowerCase().includes(search) &&
+      (filter==="all" || b.gender===filter)
+    )
+    .forEach(b=>{
+
+      let div = document.createElement("div");
+      div.className="card";
+
+      div.innerHTML = `
+        <img src="${b.image}" width="100"><br>
+        <b>${b.name}</b><br>
+        ${b.gender}<br>
+        <span id="age-${b.id}"></span><br>
+
+        <button onclick="showDetails(${b.id})">View</button>
+        <button onclick="editBird(${b.id})">Edit</button>
+        <button onclick="deleteBird(${b.id})">Delete</button>
+      `;
+
+      list.appendChild(div);
+
+      setInterval(()=>{
+        document.getElementById("age-"+b.id).innerText =
+          getAge(b.birth);
+      },1000);
+    });
+}
+
+function showDetails(id){
+  let b = birds.find(x=>x.id===id);
+
+  detailBox.innerHTML = `
+    <div class="card">
+      <img src="${b.image}" width="150"><br>
+      <h2>${b.name}</h2>
+      <p>${b.gender}</p>
+      <p>Father: ${b.father}</p>
+      <p>Mother: ${b.mother}</p>
+      <p id="d-age"></p>
+      <p id="egg"></p>
+    </div>
+  `;
+
+  setInterval(()=>{
+    document.getElementById("d-age").innerText =
+      getAge(b.birth);
+
+    document.getElementById("egg").innerText =
+      getEgg(b.eggDate);
+
+  },1000);
+
+  showScreen("details");
+}
+
+function getAge(birth){
+  let now=new Date();
+  let b=new Date(birth);
+  let diff=now-b;
+
+  let d=Math.floor(diff/(1000*60*60*24));
+  let h=Math.floor(diff/(1000*60*60))%24;
+  let m=Math.floor(diff/(1000*60))%60;
+  let s=Math.floor(diff/1000)%60;
+
+  return `Age: ${d}d ${h}h ${m}m ${s}s`;
+}
+
+function getEgg(date){
+  if(!date) return "";
+
+  let hatch=new Date(date);
+  hatch.setDate(hatch.getDate()+23);
+
+  let now=new Date();
+  let diff=hatch-now;
+
+  if(diff<0) return "Hatched ✅";
+
+  let d=Math.floor(diff/(1000*60*60*24));
+  let h=Math.floor(diff/(1000*60*60))%24;
+
+  return `Hatch in: ${d}d ${h}h`;
+}
+
+function deleteBird(id){
+  birds=birds.filter(b=>b.id!==id);
+  localStorage.setItem("birds",JSON.stringify(birds));
+  render();
+}
+
+function editBird(id){
+  let b=birds.find(x=>x.id===id);
+
+  let newName=prompt("Name:",b.name);
+  if(newName) b.name=newName;
+
+  localStorage.setItem("birds",JSON.stringify(birds));
+  render();
+}
+
+function clearAll(){
+  localStorage.clear();
+  birds=[];
+  render();
+}
+
+</script>
+
+</body>
+</html>
