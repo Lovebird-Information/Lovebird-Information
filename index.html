@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lovebird Manager</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f2f2f2;
+      text-align: center;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      margin: 10px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px gray;
+    }
+
+    button {
+      padding: 8px;
+      margin-top: 5px;
+    }
+  </style>
+
+</head>
+
+<body>
+
+<h2>Lovebird Manager 🐦</h2>
+
+<input id="name" placeholder="পাখির নাম"><br><br>
+
+<select id="gender">
+  <option>Male</option>
+  <option>Female</option>
+</select><br><br>
+
+<input id="birth" type="date"><br><br>
+
+<input type="file" id="image"><br><br>
+
+<button onclick="saveBird()">Save</button>
+
+<h3>Saved Birds:</h3>
+<div id="list"></div>
+
+<script>
+
+let birds = JSON.parse(localStorage.getItem("birds")) || [];
+
+window.onload = function() {
+  render();
+};
+
+// Save
+function saveBird() {
+  let name = document.getElementById("name").value;
+  let gender = document.getElementById("gender").value;
+  let birth = document.getElementById("birth").value;
+
+  let file = document.getElementById("image").files[0];
+  let reader = new FileReader();
+
+  reader.onload = function(e) {
+    let bird = {
+      id: Date.now(),
+      name,
+      gender,
+      birth,
+      image: e.target.result
+    };
+
+    birds.push(bird);
+    localStorage.setItem("birds", JSON.stringify(birds));
+    render();
+  };
+
+  if (file) reader.readAsDataURL(file);
+}
+
+// Render সব data
+function render() {
+  document.getElementById("list").innerHTML = "";
+
+  birds.forEach(bird => {
+    let age = getLiveAge(bird.birth);
+
+    let div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <img src="${bird.image}" width="120"><br>
+      <b>${bird.name}</b><br>
+      Gender: ${bird.gender}<br>
+      Age: <span id="age-${bird.id}">${age}</span><br>
+      <button onclick="deleteBird(${bird.id})">Delete</button>
+    `;
+
+    document.getElementById("list").appendChild(div);
+
+    // live update
+    setInterval(() => {
+      document.getElementById("age-" + bird.id).innerText =
+        getLiveAge(bird.birth);
+    }, 1000);
+  });
+}
+
+// Live age
+function getLiveAge(birth) {
+  let now = new Date();
+  let b = new Date(birth);
+  let diff = now - b;
+
+  let days = Math.floor(diff / (1000*60*60*24));
+  let hours = Math.floor(diff / (1000*60*60)) % 24;
+  let minutes = Math.floor(diff / (1000*60)) % 60;
+  let seconds = Math.floor(diff / 1000) % 60;
+
+  return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
+
+// Delete
+function deleteBird(id) {
+  birds = birds.filter(b => b.id !== id);
+  localStorage.setItem("birds", JSON.stringify(birds));
+  render();
+}
+
+</script>
+
+</body>
+</html>
